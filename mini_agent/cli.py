@@ -34,9 +34,15 @@ from mini_agent.schema import LLMProvider
 from mini_agent.tools.base import Tool
 from mini_agent.tools.bash_tool import BashKillTool, BashOutputTool, BashTool
 from mini_agent.tools.file_tools import EditTool, ReadTool, WriteTool
-from mini_agent.tools.mcp_loader import cleanup_mcp_connections, load_mcp_tools_async, set_mcp_timeout_config
 from mini_agent.tools.note_tool import SessionNoteTool
 from mini_agent.tools.skill_tool import create_skill_tools
+
+# Try to import MCP tools, but don't fail if they're not available
+try:
+    from mini_agent.tools.mcp_loader import cleanup_mcp_connections, load_mcp_tools_async, set_mcp_timeout_config
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
 from mini_agent.utils import calculate_display_width
 
 
@@ -398,7 +404,7 @@ async def initialize_base_tools(config: Config):
             print(f"{Colors.YELLOW}⚠️  Failed to load Skills: {e}{Colors.RESET}")
 
     # 4. MCP tools (loaded with priority search)
-    if config.tools.enable_mcp:
+    if config.tools.enable_mcp and MCP_AVAILABLE:
         print(f"{Colors.BRIGHT_CYAN}Loading MCP tools...{Colors.RESET}")
         try:
             # Apply MCP timeout configuration from config.yaml
@@ -426,6 +432,8 @@ async def initialize_base_tools(config: Config):
                 print(f"{Colors.YELLOW}⚠️  MCP config file not found: {config.tools.mcp_config_path}{Colors.RESET}")
         except Exception as e:
             print(f"{Colors.YELLOW}⚠️  Failed to load MCP tools: {e}{Colors.RESET}")
+    elif config.tools.enable_mcp:
+        print(f"{Colors.YELLOW}⚠️  MCP tools not available (mcp module not installed){Colors.RESET}")
 
     print()  # Empty line separator
     return tools, skill_loader
@@ -469,18 +477,19 @@ def add_workspace_tools(tools: List[Tool], config: Config, workspace_dir: Path):
 
 async def _quiet_cleanup():
     """Clean up MCP connections, suppressing noisy asyncgen teardown tracebacks."""
-    # Silence the asyncgen finalization noise that anyio/mcp emits when
-    # stdio_client's task group is torn down across tasks.  The handler is
-    # intentionally NOT restored: asyncgen finalization happens during
-    # asyncio.run() shutdown (after run_agent returns), so restoring the
-    # handler here would still let the noise through.  Since this runs
-    # right before process exit, swallowing late exceptions is safe.
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(lambda _loop, _ctx: None)
-    try:
-        await cleanup_mcp_connections()
-    except Exception:
-        pass
+    if MCP_AVAILABLE:
+        # Silence the asyncgen finalization noise that anyio/mcp emits when
+        # stdio_client's task group is torn down across tasks.  The handler is
+        # intentionally NOT restored: asyncgen finalization happens during
+        # asyncio.run() shutdown (after run_agent returns), so restoring the
+        # handler here would still let the noise through.  Since this runs
+        # right before process exit, swallowing late exceptions is safe.
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(lambda _loop, _ctx: None)
+        try:
+            await cleanup_mcp_connections()
+        except Exception:
+            pass
 
 
 async def run_agent(workspace_dir: Path, task: str = None):
