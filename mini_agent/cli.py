@@ -199,6 +199,7 @@ def print_help():
     help_text = f"""
 {Colors.BOLD}{Colors.BRIGHT_YELLOW}Available Commands:{Colors.RESET}
   {Colors.BRIGHT_GREEN}/help{Colors.RESET}      - Show this help message
+  {Colors.BRIGHT_GREEN}/skills{Colors.RESET}    - List all installed skills
   {Colors.BRIGHT_GREEN}/clear{Colors.RESET}     - Clear session history (keep system prompt)
   {Colors.BRIGHT_GREEN}/history{Colors.RESET}   - Show current session message count
   {Colors.BRIGHT_GREEN}/stats{Colors.RESET}     - Show session statistics
@@ -712,6 +713,20 @@ async def run_agent(workspace_dir: Path, task: str = None):
 
                 elif command == "/help":
                     print_help()
+                    continue
+
+                elif command == "/skills":
+                    # List all installed skills
+                    if skill_loader and skill_loader.loaded_skills:
+                        skills = sorted(skill_loader.loaded_skills.keys())
+                        print(f"\n{Colors.BRIGHT_CYAN}📦 Installed Skills ({len(skills)}):{Colors.RESET}\n")
+                        for i, skill_name in enumerate(skills, 1):
+                            skill = skill_loader.loaded_skills[skill_name]
+                            desc = skill.description[:60] if skill.description else "No description"
+                            print(f"  {i}. {Colors.BRIGHT_GREEN}{skill_name}{Colors.RESET} - {desc}")
+                        print(f"\n{Colors.DIM}Use get_skill(skill_name) to load a skill{Colors.RESET}\n")
+                    else:
+                        print(f"\n{Colors.YELLOW}⚠️ No skills loaded{Colors.RESET}\n")
                     continue
 
                 elif command == "/clear":
