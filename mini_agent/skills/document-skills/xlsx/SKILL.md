@@ -446,6 +446,9 @@ wb.save('modified.xlsx')
 - Division by zero: check denominators before using `/` in formulas
 - Cross-sheet references: use correct format (`Sheet1!A1`)
 - Off-by-one: verify formula ranges don't include headers or extend beyond data
+- **Chinese vs English quotation marks**: Excel formulas ONLY accept English double quotes (`"`, Unicode U+0022). Chinese quotation marks (`"` left, `"` right, Unicode U+201C/U+201D) will cause #NAME? errors. Always verify quotes in IF statements and text formulas.
+  - ❌ Wrong: `=IF(A1>30,"超过","正常")`  (Chinese quotes)
+  - ✅ Correct: `=IF(A1>30,"超过","正常")` (English quotes)
 
 ## Code Style
 - Write minimal, concise Python code
